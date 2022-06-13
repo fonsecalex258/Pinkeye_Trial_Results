@@ -293,7 +293,7 @@ table1
 
 ```
 
-### Summary table excluding suspected animals 
+### Summary table excluding suspected animals (with initial notes)
 
 This table summarizes the number of animals enrolled, their initial and final weight excluding animals with initial notes (suspected pinkeye). Animals with the highest weight at enrollment were those that did not receive any vaccine (246.8 units), followed by those that received only Bovoculi, then those that received Bovis (232.6) and finally those that received both vaccines (227.5). On average the animals that received neither vaccine had the highest weaning weight (465.7) followed by those that received only Bovis (453.4), then those that received both (442.4) and finally those that received only Bovoculi (436).
 
@@ -408,7 +408,7 @@ table1
 
 ```
 
-### Data set excluding any note and animal with ORDER greater than 215
+### Data set excluding any note and animals with ORDER greater than 215
 The table summarizes the number of animals enrolled, their initial and final weight for all the animals.
 
 ```{r , echo=F, message=F, warning = FALSE}
@@ -447,7 +447,7 @@ table1
 
 
 
-### Data set excluding final notes like PE, watery eye etc and animals with ORDER grater than 215
+### Data set excluding final notes like PE, watery eye etc and animals with ORDER greater than 215
 The table summarizes the number of animals enrolled, their initial and final weight for all the animals.
 
 ```{r , echo=F, message=F, warning = FALSE}
