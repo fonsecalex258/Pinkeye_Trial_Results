@@ -408,7 +408,7 @@ table1
 
 ```
 
-### Data set excluding any note and animal with ORDER greater that 215
+### Data set excluding any note and animal with ORDER greater than 215
 The table summarizes the number of animals enrolled, their initial and final weight for all the animals.
 
 ```{r , echo=F, message=F, warning = FALSE}
