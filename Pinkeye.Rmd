@@ -1,0 +1,1091 @@
+---
+title: "Pinkeye"
+author: "Alex Fonseca"
+date: "4/27/2022"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Statistical analysis
+
+
+This chunk imports the data and creates two datasets. One set of data for all the animals registered in the spreadsheet and another one where animals with a note are excluded (suspicion of pinkeye at enrollment). Additionally, we excluded one animal from further analyzes as its initial weight of 285 and final weight of 308 indicate an abnormally unusual weight gain for the observation period.
+
+
+```{r , echo=F, message=F}
+library(readxl)
+library(dplyr)
+library(knitr)
+library(stats)
+
+
+##Final weight data set
+
+fw <- read_excel("Data Sheet November 1.xlsx", 
+                 sheet = "Data Sheet November 1")
+fw1 <- data.frame(fw)
+
+
+##Initial weight data set
+
+iw <- read_excel("Pinkeye Trial Data.xlsx", 
+                 sheet = "all calves initial vax")
+iw1 <- data.frame(iw)
+#####################################################
+### creating a subset excluding all kind of notes ###
+#####################################################
+
+iw_4 <- read_excel("Pinkeye Trial Data.xlsx", 
+                 sheet = "vax on June 4 booster data")
+iw_7 <-read_excel("Pinkeye Trial Data.xlsx", 
+                 sheet = "vax on June 7 booster data")
+iw_14 <- read_excel("Pinkeye Trial Data.xlsx", 
+                 sheet = "vax on June 14 booster data")
+
+iw_4 <- data.frame(iw_4)
+iw_7 <- data.frame(iw_7)
+iw_14 <- data.frame(iw_14)
+
+## Changing name  
+names(iw_4)[names(iw_4) == "June.4.Notes"] <- "initial_notes"
+names(iw_4)[names(iw_4) == "Notes.at.booster..June.30."] <- "booster_notes"
+names(iw_4)[names(iw_4) == "June.4.Weight"] <- "initial_weight"
+names(iw_7)[names(iw_7) == "June.7.Notes"] <- "initial_notes"
+names(iw_7)[names(iw_7) == "Notes.at.booster..July.1."] <- "booster_notes"
+names(iw_7)[names(iw_7) == "June.7.Weight"] <- "initial_weight"
+names(iw_14)[names(iw_14) == "June.14.Notes"] <- "initial_notes"
+names(iw_14)[names(iw_14) == "Notes.at.booster..July.7."] <- "booster_notes"
+names(iw_14)[names(iw_14) == "June.14.Weight"] <- "initial_weight"
+fw1_alt <- fw1
+names(fw1_alt)[names(fw1_alt) == "Pinkeye.lesions...scars"] <- "PD"
+
+iw_4$WeaningWeight <- fw1$Weaning.Weight[match(iw_4$ID, fw1_alt$ID)] 
+
+iw_4$PD <- fw1_alt$PD[match(iw_4$ID, fw1_alt$ID)]
+iw_7$PD <- fw1_alt$PD[match(iw_7$ID, fw1_alt$ID)]
+iw_14$PD <- fw1_alt$PD[match(iw_14$ID, fw1_alt$ID)]
+
+iw_7$WeaningWeight <- fw1_alt$Weaning.Weight[match(iw_7$ID, fw1_alt$ID)] 
+
+iw_14$WeaningWeight <- fw1_alt$Weaning.Weight[match(iw_14$ID, fw1_alt$ID)]
+
+data_full_notes <- bind_rows(iw_4, iw_7, iw_14)
+
+data_full_notes <- data_full_notes %>%
+  filter(ID != "066")
+
+data_full_notes <- data_full_notes %>%
+  mutate(PED = ifelse(is.na(PD), 0,1 ))
+#dataPD_WO_NOTES <- dataframe_ABCD_WO_NOTES %>%
+#  mutate(PD = ifelse(is.na(Pinkeye), 0,1 ))%>%
+#  mutate(Weight_10 = Weight*10)
+
+data_full_notes$VACCINE <- factor(data_full_notes$VACCINE)
+data_full_notes$PED <- factor(data_full_notes$PED)
+
+
+#### Excluding both initial and booster notes
+data_WO_any_notes <- data_full_notes %>% 
+  filter(is.na(initial_notes) & is.na(booster_notes))
+#### Excluding booster notes
+data_WO_final_notes <- data_full_notes %>% 
+  filter(is.na(booster_notes))
+
+
+data_WO_any_notes_215_241 <- data_WO_any_notes %>% 
+  filter(ORDER < 215  )
+
+data_WO_final_notes_215_241 <- data_WO_final_notes %>% 
+  filter(ORDER < 215  )
+
+#### Excluding booster notes
+#iw_4_WO_final_notes <- iw_4 %>% 
+#  filter(is.na(Notes.at.booster..June.30.))
+#### Excluding both notes initial and booster
+#iw_7_WO_any_notes <- iw_7 %>% 
+#  filter(is.na(June.7.Notes) & #is.na(Notes.at.booster..July.1.)) #### Excluding booster #notes
+#iw_7_WO_final_notes <- iw_7 %>% 
+#  filter(is.na(Notes.at.booster..July.1.))
+#### Excluding both notes initial and booster
+#iw_14_WO_any_notes <- iw_14 %>% 
+#  filter(is.na(June.14.Notes) & #is.na(iw_14$Notes.at.booster..July.7.)) 
+#### Excluding booster notes
+#iw_14_WO_final_notes <- iw_14 %>% 
+#  filter(is.na(iw_14$Notes.at.booster..July.7.)) 
+
+#test_4 <- iw_4[order(iw_4$ID),]
+#test_7 <- iw_7[order(iw_7$ID),]
+#test_14 <- iw_14[order(iw_14$ID),]
+
+#test_4_v <- test_4[complete.cases(test_4$ID),]
+#test_7_v <- test_7[complete.cases(test_7$ID),]
+#test_14_v <- test_14[complete.cases(test_14$ID),]
+
+
+## Ordering ID from initial weights 
+test1 <- iw1[order(iw1$ID),]
+
+##Selecting complete cases in initial weight dataset
+
+test3 <- test1[complete.cases(test1$ID),]
+#test1 <- data.frame(order(survey_data3$ID))
+
+
+#Merging initial and final weight data sets  
+dataframe_ABC = merge(test3,fw1 , by="ID")
+
+
+## Changing name of pinkeye outcome 
+names(dataframe_ABC)[names(dataframe_ABC) == "Pinkeye.lesions...scars"] <- "Pinkeye"
+
+## New dataset excluding animals with initial notes 
+dataframe_WO_NOTES <- dataframe_ABC %>% 
+  filter(is.na(Notes.x))
+## excluding (??) animal
+dataframe_WO_NOTES <- dataframe_WO_NOTES %>%
+  filter(ID != "066")%>%
+  filter(ID != "064")
+
+
+## creating a new variable called Bovis and Bovoculi for dataset with an without notes 
+dataframe_ABCD <- dataframe_ABC %>% 
+  mutate(Bovis = ifelse(VACCINE %in% c("BOVIS ONLY", "BOTH"), 1, 0 )) %>% 
+  mutate(Bovoculi = ifelse(VACCINE %in% c("BOVOCULI ONLY", "BOTH"), 1, 0 ))
+
+
+dataframe_ABCD_WO_NOTES <- dataframe_WO_NOTES %>% 
+  mutate(Bovis = ifelse(VACCINE %in% c("BOVIS ONLY", "BOTH"), 1, 0 ))%>% 
+  mutate(Bovoculi = ifelse(VACCINE %in% c("BOVOCULI ONLY", "BOTH"), 1, 0 ))
+
+## Setting Bovoculi and Bovis as categorical variables 
+dataframe_ABCD$Bovoculi <- factor(dataframe_ABCD$Bovoculi)
+dataframe_ABCD$Bovis <- factor(dataframe_ABCD$Bovis)
+##### without notes 
+dataframe_ABCD_WO_NOTES$Bovoculi <- factor(dataframe_ABCD_WO_NOTES$Bovoculi)
+
+dataframe_ABCD_WO_NOTES$Bovis <- factor(dataframe_ABCD_WO_NOTES$Bovis)
+
+## creating a new dataset which include Pinkeye outcome
+dataPD <- dataframe_ABCD %>%
+  mutate(PD = ifelse(is.na(Pinkeye), 0,1 ))
+dataPD_WO_NOTES <- dataframe_ABCD_WO_NOTES %>%
+  mutate(PD = ifelse(is.na(Pinkeye), 0,1 ))%>%
+  mutate(Weight_10 = Weight*10)
+
+## Setting vaccine and Pinkeye as factors 
+dataPD$VACCINE <- factor(dataPD$VACCINE)
+dataPD$PD <- factor(dataPD$PD)
+dataPD$Bovoculi <- factor(dataPD$Bovoculi)
+dataPD$Bovis <- factor(dataPD$Bovis)
+
+
+
+dataPD_WO_NOTES$VACCINE <- factor(dataPD_WO_NOTES$VACCINE)
+dataPD_WO_NOTES$PD <- factor(dataPD_WO_NOTES$PD)
+
+dataPD_WO_NOTES$Bovoculi <- factor(dataPD_WO_NOTES$Bovoculi)
+dataPD_WO_NOTES$Bovis <- factor(dataPD_WO_NOTES$Bovis)
+## setting date of vaccination as character
+
+#dataframe_ABCD$Date.of.initial.vaccination <- #as.character(dataframe_ABCD$Date.of.initial.vaccination)
+
+
+
+
+## coding dates in order: 1, 2, 3 vaccination
+
+#dataframe_ABCD <- dataframe_ABCD %>% 
+#  mutate(ordervacc = ifelse(Date.of.initial.vaccination == #"2021-06-04", 1, ifelse(Date.of.initial.vaccination == #"2021-06-07", 2, 3 )))
+
+
+```
+
+## Interaction plot  between Bovis and Bovoculi for weaning weight using the full data. 
+
+```{r , echo=F}
+
+library(readxl)
+library(dplyr)
+library(knitr)
+library(stats)
+
+
+interaction.plot(x.factor = dataPD$Bovis, #x-axis variable
+                 trace.factor = dataPD$Bovoculi, #variable for lines
+                 response = dataPD$Weaning.Weight, #y-axis variable
+                 fun = median, #metric to plot
+                 ylab = "Weight",
+                 xlab = "Bovis",
+                 col = c("pink", "blue"),
+                 lty = 1, #line type
+                 lwd = 2, #line width
+                 trace.label = "Bovoculi")
+
+```
+
+## Interaction plot excluding animals suspected of pinkeye
+
+This interaction plot graphically displays the average weaning weight for animals vaccinated with M. bovis and M. bovoculi, excluding animals suspected of pinkeye. Since there is no crossing between the lines, we can say that there is no interaction. It means that the effect of vaccinate with Bovis on weaning weight is independent on vaccinate with Bovoculi.
+
+```{r , echo=F}
+
+library(readxl)
+library(dplyr)
+library(knitr)
+library(stats)
+
+
+interaction.plot(x.factor = dataPD_WO_NOTES$Bovis, #x-axis variable
+                 trace.factor = dataPD_WO_NOTES$Bovoculi, #variable for lines
+                 response = dataPD_WO_NOTES$Weaning.Weight, #y-axis variable
+                 fun = median, #metric to plot
+                 ylab = "Weight",
+                 xlab = "Bovis",
+                 col = c("pink", "blue"),
+                 lty = 1, #line type
+                 lwd = 2, #line width
+                 trace.label = "Bovoculi")
+
+```
+
+## Descriptive tables
+
+### Full data set 
+The table summarizes the number of animals enrolled, their initial and final weight for all the animals.
+
+```{r , echo=F, message=F, warning = FALSE}
+
+library(dplyr)
+library(knitr)
+library(stats)
+library(kableExtra)
+library(tinytex)
+library(AER)
+
+
+
+
+#dataframe_ABCD   %>% group_by(VACCINE) %>% summarise(avearge = mean(Weaning.Weight))
+
+#dataframe_ABCD   %>% group_by(VACCINE) %>% summarise(avearge = mean(Weight))
+
+table <- dataPD %>% group_by(VACCINE) %>% summarise('Animals allocated' = n(),'Mean enrollment weight'  = mean(Weight), 'Mean weaning weight' = mean(Weaning.Weight))
+
+table1 <- t(table)
+
+table1  %>% kbl(align = "c")
+
+table1
+
+
+#table1 <-  table1 %>% kable_styling(bootstrap_options = "scale_down")
+
+#kable (table1)
+
+
+
+
+```
+
+### Summary table excluding suspected animals 
+
+This table summarizes the number of animals enrolled, their initial and final weight excluding animals with initial notes (suspected pinkeye). Animals with the highest weight at enrollment were those that did not receive any vaccine (246.8 units), followed by those that received only Bovoculi, then those that received Bovis (232.6) and finally those that received both vaccines (227.5). On average the animals that received neither vaccine had the highest weaning weight (465.7) followed by those that received only Bovis (453.4), then those that received both (442.4) and finally those that received only Bovoculi (436).
+
+A possible differential enrollment was analyzed by obtaining the percentage of animals without suspicion of pinkeye (187) from the total number of animals reported (241) for each vaccine category. Thus, 75.5% (99/131) of the animals that received both vaccines had no note (suspected pinkeye), 70.7% (29/41) of the animals that were vaccinated only with M bovis had no note, 82.3% (28/34) of the animals vaccinated only with M bovoculi had no note, and 88.5% (31/35) of the control animals had no note at all (suspected pinkeye). Since there are no large differences in such percentages, we conclude that there was no differential enrollment.
+
+```{r , echo=F }
+
+library(dplyr)
+library(knitr)
+library(stats)
+library(kableExtra)
+library(tinytex)
+library(AER)
+
+
+
+
+#dataframe_ABCD   %>% group_by(VACCINE) %>% summarise(avearge = mean(Weaning.Weight))
+
+#dataframe_ABCD   %>% group_by(VACCINE) %>% summarise(avearge = mean(Weight))
+
+table <- dataPD_WO_NOTES %>% group_by(VACCINE) %>% summarise('Animals allocated' = n(),'Mean enrollment weight'  = mean(Weight), 'Mean weaning weight' = mean(Weaning.Weight))
+
+table1 <- t(table)
+
+table1  %>% kbl(align = "c")
+
+table1
+
+
+#table1 <-  table1 %>% kable_styling(bootstrap_options = "scale_down")
+
+#kable (table1)
+
+
+
+
+```
+
+
+### Data set excluding any note
+The table summarizes the number of animals enrolled, their initial and final weight for all the animals.
+
+```{r , echo=F, message=F, warning = FALSE}
+
+library(dplyr)
+library(knitr)
+library(stats)
+library(kableExtra)
+library(tinytex)
+library(AER)
+
+
+
+
+#dataframe_ABCD   %>% group_by(VACCINE) %>% summarise(avearge = mean(Weaning.Weight))
+
+#dataframe_ABCD   %>% group_by(VACCINE) %>% summarise(avearge = mean(Weight))
+
+table <- data_WO_any_notes %>% group_by(VACCINE) %>% summarise('Animals allocated' = n(),'Mean enrollment weight'  = mean(initial_weight), 'Mean weaning weight' = mean(WeaningWeight))
+
+table1 <- t(table)
+
+table1  %>% kbl(align = "c")
+
+table1
+
+
+#table1 <-  table1 %>% kable_styling(bootstrap_options = "scale_down")
+
+#kable (table1)
+
+
+
+
+```
+
+### Data set excluding final notes like PE, watery eye etc
+The table summarizes the number of animals enrolled, their initial and final weight for all the animals.
+
+```{r , echo=F, message=F, warning = FALSE}
+
+library(dplyr)
+library(knitr)
+library(stats)
+library(kableExtra)
+library(tinytex)
+library(AER)
+
+
+
+
+#dataframe_ABCD   %>% group_by(VACCINE) %>% summarise(avearge = mean(Weaning.Weight))
+
+#dataframe_ABCD   %>% group_by(VACCINE) %>% summarise(avearge = mean(Weight))
+
+table <- data_WO_final_notes %>% group_by(VACCINE) %>% summarise('Animals allocated' = n(),'Mean enrollment weight'  = mean(initial_weight), 'Mean weaning weight' = mean(WeaningWeight))
+
+table1 <- t(table)
+
+table1  %>% kbl(align = "c")
+
+table1
+
+
+#table1 <-  table1 %>% kable_styling(bootstrap_options = "scale_down")
+
+#kable (table1)
+
+
+
+
+```
+
+### Data set excluding any note and animal with ORDER greater that 215
+The table summarizes the number of animals enrolled, their initial and final weight for all the animals.
+
+```{r , echo=F, message=F, warning = FALSE}
+
+library(dplyr)
+library(knitr)
+library(stats)
+library(kableExtra)
+library(tinytex)
+library(AER)
+
+
+
+
+#dataframe_ABCD   %>% group_by(VACCINE) %>% summarise(avearge = mean(Weaning.Weight))
+
+#dataframe_ABCD   %>% group_by(VACCINE) %>% summarise(avearge = mean(Weight))
+
+table <- data_WO_any_notes_215_241 %>% group_by(VACCINE) %>% summarise('Animals allocated' = n(),'Mean enrollment weight'  = mean(initial_weight), 'Mean weaning weight' = mean(WeaningWeight))
+
+table1 <- t(table)
+
+table1  %>% kbl(align = "c")
+
+table1
+
+
+#table1 <-  table1 %>% kable_styling(bootstrap_options = "scale_down")
+
+#kable (table1)
+
+
+
+
+```
+
+
+
+### Data set excluding final notes like PE, watery eye etc and animals with ORDER grater than 215
+The table summarizes the number of animals enrolled, their initial and final weight for all the animals.
+
+```{r , echo=F, message=F, warning = FALSE}
+
+library(dplyr)
+library(knitr)
+library(stats)
+library(kableExtra)
+library(tinytex)
+library(AER)
+
+
+
+
+#dataframe_ABCD   %>% group_by(VACCINE) %>% summarise(avearge = mean(Weaning.Weight))
+
+#dataframe_ABCD   %>% group_by(VACCINE) %>% summarise(avearge = mean(Weight))
+
+table <- data_WO_final_notes_215_241 %>% group_by(VACCINE) %>% summarise('Animals allocated' = n(),'Mean enrollment weight'  = mean(initial_weight), 'Mean weaning weight' = mean(WeaningWeight))
+
+table1 <- t(table)
+
+table1  %>% kbl(align = "c")
+
+table1
+
+
+#table1 <-  table1 %>% kable_styling(bootstrap_options = "scale_down")
+
+#kable (table1)
+
+
+
+
+```
+
+
+
+
+
+### Summary table Pinkeye, enrollment and final weight for full dataset
+
+Summary table for mean enrollment/weaning weight to animals diagnosed with pinkeye (PD=1) and those without diagnosis (PD=0). This table includes all the animals initially enrolled (241). 
+
+
+```{r , echo=F }
+
+library(dplyr)
+library(knitr)
+library(stats)
+library(kableExtra)
+library(tinytex)
+library(AER)
+
+
+table <- dataPD %>% group_by(PD) %>% summarise('Animals allocated' = n(),'Mean enrollment weight'  = mean(Weight), 'Mean weaning weight' = mean(Weaning.Weight))
+
+table1 <- t(table)
+
+table1  %>% kbl(align = "c")
+table1
+```
+
+### Summary table Pinkeye, enrollment and final weight excluding initial notes
+
+Summary table for mean enrollment/weaning weight to animals diagnosed with pinkeye (PD=1) and those without diagnosis (PD=0). This table excludes animal with notes (187) (suspected pinkeye). During the trial 81 animals developed pinkeye and 106 remained negative. The average weight in the registration for the positive animals was 234.6 units and 230.7 units for the negative ones. Weaning weight for negative animals was slightly greater than that of pinkeye animals.
+
+
+```{r , echo=F }
+
+library(dplyr)
+library(knitr)
+library(stats)
+library(kableExtra)
+library(tinytex)
+library(AER)
+
+
+table <- dataPD_WO_NOTES %>% group_by(PD) %>% summarise('Animals allocated' = n(),'Mean enrollment weight'  = mean(Weight), 'Mean weaning weight' = mean(Weaning.Weight))
+
+table1 <- t(table)
+
+table1  %>% kbl(align = "c")
+table1
+```
+
+### Summary table Pinkeye, enrollment and final weight excluding any kind of notes
+
+```{r , echo=F }
+
+library(dplyr)
+library(knitr)
+library(stats)
+library(kableExtra)
+library(tinytex)
+library(AER)
+
+
+table <- data_WO_any_notes %>% group_by(PED) %>% summarise('Animals allocated' = n(),'Mean enrollment weight'  = mean(initial_weight), 'Mean weaning weight' = mean(WeaningWeight))
+
+table1 <- t(table)
+
+table1  %>% kbl(align = "c")
+table1
+```
+
+### Summary table Pinkeye, enrollment and final weight excluding final notes
+
+```{r , echo=F }
+
+library(dplyr)
+library(knitr)
+library(stats)
+library(kableExtra)
+library(tinytex)
+library(AER)
+
+
+table <- data_WO_final_notes %>% group_by(PED) %>% summarise('Animals allocated' = n(),'Mean enrollment weight'  = mean(initial_weight), 'Mean weaning weight' = mean(WeaningWeight))
+
+table1 <- t(table)
+
+table1  %>% kbl(align = "c")
+table1
+```
+
+
+### Summary table Pinkeye, enrollment and final weight excluding any kind of notes and animal with ORDER greater than 215
+
+```{r , echo=F }
+
+library(dplyr)
+library(knitr)
+library(stats)
+library(kableExtra)
+library(tinytex)
+library(AER)
+
+
+table <- data_WO_any_notes_215_241 %>% group_by(PED) %>% summarise('Animals allocated' = n(),'Mean enrollment weight'  = mean(initial_weight), 'Mean weaning weight' = mean(WeaningWeight))
+
+table1 <- t(table)
+
+table1  %>% kbl(align = "c")
+table1
+```
+
+### Summary table Pinkeye, enrollment and final weight excluding final notes and animal with ORDER greater than 215
+
+```{r , echo=F }
+
+library(dplyr)
+library(knitr)
+library(stats)
+library(kableExtra)
+library(tinytex)
+library(AER)
+
+
+table <- data_WO_final_notes_215_241 %>% group_by(PED) %>% summarise('Animals allocated' = n(),'Mean enrollment weight'  = mean(initial_weight), 'Mean weaning weight' = mean(WeaningWeight))
+
+table1 <- t(table)
+
+table1  %>% kbl(align = "c")
+table1
+```
+
+## Effect of vaccine on pinkeye ocurrence
+
+The table shows the number of animals diagnosed with pinkeye (PD=1) according to the vaccine received. A chi-square test was performed to establish an association between pinkeye and the type of vaccine received. It is concluded that the type of vaccine received is not related to the increase or decrease in the incidence of pinkeye (p>0.05). 
+
+```{r , echo=F, warning = FALSE}
+
+
+library(readxl)
+library(dplyr)
+library(knitr)
+library(stats)
+
+
+
+
+#result with ANOVA
+#av = aov(Weight ~ Bovis, data=dataframe_ABCD) 
+#summary(av) 
+#av$coefficients
+
+
+#####general linear regression with interaction
+#logistic <- glm(PD ~ Bovis*Bovoculi, data=dataPD_WO_NOTES, family = "binomial")
+
+#summary(logistic) 
+#exp(cbind(OR = coef(logistic), confint(logistic)))
+
+library(summarytools)
+library(dplyr)
+
+# fourth method:
+dataPD_WO_NOTES %$%
+  ctable(VACCINE, PD,
+         prop = "r", chisq = TRUE, headings = FALSE
+  ) %>%
+  print(
+    method = "render",
+    style = "rmarkdown",
+    footnote = NA
+  )
+
+
+
+```
+
+## Effect of vaccine on pinkeye occurrence adjusting for enrollment weight
+
+A logistic regression was performed to establish the association between pinkeye and type of vaccine received, adjusted for the initial weight of the animals and excluding animals with notes (pinkeye suspicion). After adjusting for initial weight, it is concluded that the type of vaccine received is not related to the increase or decrease in the incidence of pinkeye.
+
+
+```{r , echo=F}
+
+library(readxl)
+library(dplyr)
+library(knitr)
+library(stats)
+
+####general linear regression with interaction
+logistic <- glm(PD ~ relevel(VACCINE, ref="NOTHING") +Weight, data=dataPD_WO_NOTES, family = "binomial")
+
+summary(logistic) 
+#exp(cbind(OR = coef(logistic), confint(logistic)))
+
+```
+
+## Effect of vaccine on pinkeye occurrence adjusting for enrollment weight excluding any kind of note
+
+```{r , echo=F}
+
+library(readxl)
+library(dplyr)
+library(knitr)
+library(stats)
+
+####general linear regression with interaction
+logistic <- glm(PED ~ relevel(VACCINE, ref="NOTHING") + initial_weight, data=data_WO_any_notes, family = "binomial")
+
+summary(logistic) 
+#exp(cbind(OR = coef(logistic), confint(logistic)))
+
+```
+
+## Effect of vaccine on pinkeye occurrence adjusting for enrollment weight excluding final notes 
+
+```{r , echo=F}
+
+library(readxl)
+library(dplyr)
+library(knitr)
+library(stats)
+
+####general linear regression with interaction
+logistic <- glm(PED ~ relevel(VACCINE, ref="NOTHING") + initial_weight, data=data_WO_final_notes, family = "binomial")
+
+summary(logistic) 
+#exp(cbind(OR = coef(logistic), confint(logistic)))
+
+```
+
+
+## Effect of vaccine on final weight 
+
+A linear regression was performed to analyze the effect of the type of vaccine received on the final weight of the animals. The results indicate that the type of vaccine does not have a significant effect on the weaning weight. 
+
+```{r , echo=F}
+
+
+library(readxl)
+library(dplyr)
+library(knitr)
+library(stats)
+
+
+
+#result with ANOVA
+#av = aov(Weight ~ Bovis, data=dataframe_ABCD) 
+#summary(av) 
+#av$coefficients
+
+
+#####general linear regression with interaction
+linearMod <- lm(Weaning.Weight ~ relevel(VACCINE, ref="NOTHING"), data=dataPD_WO_NOTES)
+
+summary(linearMod) 
+
+```
+
+## Effect of vaccine on final weight excluding any kind of note
+
+```{r , echo=F}
+
+
+library(readxl)
+library(dplyr)
+library(knitr)
+library(stats)
+
+
+
+#result with ANOVA
+#av = aov(Weight ~ Bovis, data=dataframe_ABCD) 
+#summary(av) 
+#av$coefficients
+
+
+#####general linear regression with interaction
+linearMod <- lm(WeaningWeight ~ relevel(VACCINE, ref="NOTHING"), data=data_WO_any_notes)
+
+summary(linearMod) 
+
+influencePlot(linearMod)
+outlierTest(linearMod)
+
+```
+
+## Effect of vaccine on final weight excluding final notes
+
+```{r , echo=F}
+
+
+library(readxl)
+library(dplyr)
+library(knitr)
+library(stats)
+
+
+
+#result with ANOVA
+#av = aov(Weight ~ Bovis, data=dataframe_ABCD) 
+#summary(av) 
+#av$coefficients
+
+
+#####general linear regression with interaction
+linearMod <- lm(WeaningWeight ~ relevel(VACCINE, ref="NOTHING"), data=data_WO_final_notes)
+
+summary(linearMod) 
+
+```
+
+## Effect of vaccine on final weight adjusting for enrollment weight
+
+A linear regression was performed to analyze the effect of the type of vaccine received on the final weight, adjusting for the initial weight of the animals. The results indicate that the type of vaccine does not have a significant effect on the final weight after adjusting for the initial weight. 
+
+```{r , echo=F}
+
+
+library(readxl)
+library(dplyr)
+library(knitr)
+library(stats)
+
+
+
+#result with ANOVA
+#av = aov(Weight ~ Bovis, data=dataframe_ABCD) 
+#summary(av) 
+#av$coefficients
+
+
+#####general linear regression with interaction
+linearMod <- lm(Weaning.Weight ~ relevel(VACCINE, ref="NOTHING") + Weight_10, data=dataPD_WO_NOTES)
+
+summary(linearMod) 
+
+```
+
+
+## Effect of vaccine on final weight adjusting for enrollment weight and excluding any king of note
+
+
+```{r , echo=F}
+
+
+library(readxl)
+library(dplyr)
+library(knitr)
+library(stats)
+
+
+
+#result with ANOVA
+#av = aov(Weight ~ Bovis, data=dataframe_ABCD) 
+#summary(av) 
+#av$coefficients
+
+
+#####general linear regression with interaction
+linearMod <- lm(WeaningWeight ~ relevel(VACCINE, ref="NOTHING") + initial_weight, data=data_WO_any_notes)
+
+summary(linearMod) 
+
+```
+
+## Effect of vaccine on final weight adjusting for enrollment weight and excluding final notes
+
+
+```{r , echo=F}
+
+
+library(readxl)
+library(dplyr)
+library(knitr)
+library(stats)
+
+
+
+#result with ANOVA
+#av = aov(Weight ~ Bovis, data=dataframe_ABCD) 
+#summary(av) 
+#av$coefficients
+
+
+#####general linear regression with interaction
+linearMod <- lm(WeaningWeight ~ relevel(VACCINE, ref="NOTHING") + initial_weight, data=data_WO_final_notes)
+
+summary(linearMod) 
+
+```
+
+
+## Effect of pinkeye on final weight
+
+A linear regression was performed to analyze the pinkeye effect on the final weight of the animals. Although an animal diagnosed with pinkeye has an average decrease in weaning weight of 6.26 units, the association between weaning weight and incidence of pinkeye is not statistically significant. 
+
+```{r , echo=F}
+
+
+library(readxl)
+library(dplyr)
+library(knitr)
+library(stats)
+
+
+
+#result with ANOVA
+#av = aov(Weight ~ Bovis, data=dataframe_ABCD) 
+#summary(av) 
+#av$coefficients
+
+
+#####general linear regression with interaction
+linearMod <- lm(Weaning.Weight ~ PD, data=dataPD_WO_NOTES)
+
+summary(linearMod) 
+
+
+#influencePlot(linearMod)
+#outlierTest(linearMod)
+
+#cutoff <- 4/(nrow(dataPD_WO_NOTES)-length(linearMod$coefficients)-2)
+#plot(linearMod, which=4, cook.levels=cutoff)
+#abline(h=cutoff, lty=2, col="red")
+
+
+#hist(dataPD_WO_NOTES$Weaning.Weight)
+#hist(dataPD_WO_NOTES$Weight)
+
+#qqPlot(dataPD_WO_NOTES$Weight)
+#qqPlot(dataPD_WO_NOTES$Weaning.Weight)
+#qqPlot(linearMod)
+
+
+
+```
+
+## Effect of pinkeye on final weight excluding any kind of note
+
+
+
+```{r , echo=F}
+
+
+library(readxl)
+library(dplyr)
+library(knitr)
+library(stats)
+
+
+
+#result with ANOVA
+#av = aov(Weight ~ Bovis, data=dataframe_ABCD) 
+#summary(av) 
+#av$coefficients
+
+
+#####general linear regression with interaction
+linearMod <- lm(WeaningWeight ~ PED, data=data_WO_any_notes)
+
+summary(linearMod) 
+
+
+#influencePlot(linearMod)
+#outlierTest(linearMod)
+
+#cutoff <- 4/(nrow(dataPD_WO_NOTES)-length(linearMod$coefficients)-2)
+#plot(linearMod, which=4, cook.levels=cutoff)
+#abline(h=cutoff, lty=2, col="red")
+
+
+#hist(dataPD_WO_NOTES$Weaning.Weight)
+#hist(dataPD_WO_NOTES$Weight)
+
+#qqPlot(dataPD_WO_NOTES$Weight)
+#qqPlot(dataPD_WO_NOTES$Weaning.Weight)
+#qqPlot(linearMod)
+
+
+
+```
+
+## Effect of pinkeye on final weight excluding final notes
+
+
+
+```{r , echo=F}
+
+
+library(readxl)
+library(dplyr)
+library(knitr)
+library(stats)
+
+
+
+#result with ANOVA
+#av = aov(Weight ~ Bovis, data=dataframe_ABCD) 
+#summary(av) 
+#av$coefficients
+
+
+#####general linear regression with interaction
+linearMod <- lm(WeaningWeight ~ PED, data=data_WO_final_notes)
+
+summary(linearMod) 
+
+
+#influencePlot(linearMod)
+#outlierTest(linearMod)
+
+#cutoff <- 4/(nrow(dataPD_WO_NOTES)-length(linearMod$coefficients)-2)
+#plot(linearMod, which=4, cook.levels=cutoff)
+#abline(h=cutoff, lty=2, col="red")
+
+
+#hist(dataPD_WO_NOTES$Weaning.Weight)
+#hist(dataPD_WO_NOTES$Weight)
+
+#qqPlot(dataPD_WO_NOTES$Weight)
+#qqPlot(dataPD_WO_NOTES$Weaning.Weight)
+#qqPlot(linearMod)
+
+
+
+```
+
+
+## Effect of pinkeye on final weight adjusting for enrollment weight
+
+Similarly, a linear regression was performed to analyze the effect of pinkeye on weaning weight, adjusting for the initial weight of the animals. It is observed that animals with pinkeye lose an average of 10.02 units of weight at weaning, although the association between pinkeye and weaning weight is not statistically significant.
+
+```{r , echo=F}
+
+
+library(readxl)
+library(dplyr)
+library(knitr)
+library(stats)
+
+
+
+#result with ANOVA
+#av = aov(Weight ~ Bovis, data=dataframe_ABCD) 
+#summary(av) 
+#av$coefficients
+
+
+#####general linear regression with interaction
+linearMod <- lm(Weaning.Weight ~ Weight_10 + PD , data=dataPD_WO_NOTES)
+
+summary(linearMod) 
+```
+
+
+## Effect of pinkeye on final weight adjusting for enrollment weight excluding all kind of notes
+
+```{r , echo=F}
+
+
+library(readxl)
+library(dplyr)
+library(knitr)
+library(stats)
+
+
+
+#result with ANOVA
+#av = aov(Weight ~ Bovis, data=dataframe_ABCD) 
+#summary(av) 
+#av$coefficients
+
+
+#####general linear regression with interaction
+linearMod <- lm(WeaningWeight ~ initial_weight + PED , data=data_WO_any_notes)
+
+summary(linearMod) 
+```
+
+
+## Effect of pinkeye on final weight adjusting for enrollment weight excluding final notes
+
+```{r , echo=F}
+
+
+library(readxl)
+library(dplyr)
+library(knitr)
+library(stats)
+
+
+
+#result with ANOVA
+#av = aov(Weight ~ Bovis, data=dataframe_ABCD) 
+#summary(av) 
+#av$coefficients
+
+
+#####general linear regression with interaction
+linearMod <- lm(WeaningWeight ~ initial_weight + PED , data=data_WO_final_notes)
+
+summary(linearMod) 
+```
+
+
